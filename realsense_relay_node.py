@@ -31,8 +31,6 @@ class RealSenseRelayNode(Node):
     def __init__(self):
         super().__init__('rob498_realsense_relay')
 
-        input_topic = self.declare_parameter('input_pose_topic', '/camera/pose/sample').value
-        output_topic = self.declare_parameter('output_pose_topic', '/mavros/vision_pose/pose').value
         output_frame_id = self.declare_parameter('output_frame_id', 'map').value
         self.apply_frame_transform = self.declare_parameter('apply_frame_transform', True).value
 
@@ -44,16 +42,16 @@ class RealSenseRelayNode(Node):
         self.rs_to_enu_quat = (-0.5, 0.5, -0.5, 0.5)
         self.rs_to_enu_quat_conj = quat_conjugate(self.rs_to_enu_quat)
 
-        self.vision_pose_pub = self.create_publisher(PoseStamped, output_topic, 10)
+        self.vision_pose_pub = self.create_publisher(PoseStamped, '/mavros/vision_pose/pose', 10)
         self.realsense_sub = self.create_subscription(
             PoseStamped,
-            input_topic,
+            '/camera/pose/sample',
             self.realsense_pose_callback,
             10,
         )
 
         self.get_logger().info(
-            f'Relaying RealSense pose from {input_topic} to {output_topic} '
+            f'Relaying RealSense pose from /camera/pose/sample to /mavros/vision_pose/pose '
             f'(transform={self.apply_frame_transform}, frame_id={self.output_frame_id})'
         )
 
