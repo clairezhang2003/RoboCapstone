@@ -79,96 +79,96 @@ class CommNode(Node):
     def handle_launch(self):
         self.get_logger().info('LAUNCH received – ascending to %.2f m' % TAKEOFF_ALTITUDE)
 
-        with self._lock:
-            takeoff_pose = PoseStamped()
-            takeoff_pose.header.frame_id = 'map'
-            takeoff_pose.pose.position.x = self.current_pose.pose.position.x
-            takeoff_pose.pose.position.y = self.current_pose.pose.position.y
-            takeoff_pose.pose.position.z = TAKEOFF_ALTITUDE
-            takeoff_pose.pose.orientation = self.current_pose.pose.orientation
-            self.hold_pose = takeoff_pose
+        # with self._lock:
+        #     takeoff_pose = PoseStamped()
+        #     takeoff_pose.header.frame_id = 'map'
+        #     takeoff_pose.pose.position.x = self.current_pose.pose.position.x
+        #     takeoff_pose.pose.position.y = self.current_pose.pose.position.y
+        #     takeoff_pose.pose.position.z = TAKEOFF_ALTITUDE
+        #     takeoff_pose.pose.orientation = self.current_pose.pose.orientation
+        #     self.hold_pose = takeoff_pose
 
-        time.sleep(0.5)
+        # time.sleep(0.5)
 
-        if self.drone_state.mode != 'OFFBOARD':
-            if not self._set_mode('OFFBOARD'):
-                self.get_logger().warn('Could not set OFFBOARD mode')
+        # if self.drone_state.mode != 'OFFBOARD':
+        #     if not self._set_mode('OFFBOARD'):
+        #         self.get_logger().warn('Could not set OFFBOARD mode')
 
-        if not self.drone_state.armed:
-            if not self._set_arm(True):
-                self.get_logger().warn('Could not arm')
+        # if not self.drone_state.armed:
+        #     if not self._set_arm(True):
+        #         self.get_logger().warn('Could not arm')
 
-        self.get_logger().info('Climbing ...')
-        deadline = time.time() + 15.0
-        while time.time() < deadline:
-            with self._lock:
-                z = self.current_pose.pose.position.z
-            if abs(z - TAKEOFF_ALTITUDE) < 0.05:
-                self.get_logger().info('Target altitude reached (%.3f m)' % z)
-                break
-            time.sleep(0.1)
-        else:
-            self.get_logger().warn('Altitude not reached within timeout')
+        # self.get_logger().info('Climbing ...')
+        # deadline = time.time() + 15.0
+        # while time.time() < deadline:
+        #     with self._lock:
+        #         z = self.current_pose.pose.position.z
+        #     if abs(z - TAKEOFF_ALTITUDE) < 0.05:
+        #         self.get_logger().info('Target altitude reached (%.3f m)' % z)
+        #         break
+        #     time.sleep(0.1)
+        # else:
+        #     self.get_logger().warn('Altitude not reached within timeout')
 
     def handle_test(self):
         self.get_logger().info('TEST received – stationkeeping for %.0f s' % HOVER_DURATION)
 
-        with self._lock:
-            self.hold_pose = PoseStamped()
-            self.hold_pose.header.frame_id = 'map'
-            self.hold_pose.pose = self.current_pose.pose
-            self.mission_active = True
+        # with self._lock:
+        #     self.hold_pose = PoseStamped()
+        #     self.hold_pose.header.frame_id = 'map'
+        #     self.hold_pose.pose = self.current_pose.pose
+        #     self.mission_active = True
 
-        start = time.time()
-        while time.time() - start < HOVER_DURATION:
-            elapsed = time.time() - start
-            if int(elapsed) % 5 == 0:
-                with self._lock:
-                    p = self.current_pose.pose.position
-                self.get_logger().info(
-                    'Stationkeeping ... %.1f s  pos=(%.3f, %.3f, %.3f)' %
-                    (elapsed, p.x, p.y, p.z))
-            time.sleep(1.0)
+        # start = time.time()
+        # while time.time() - start < HOVER_DURATION:
+        #     elapsed = time.time() - start
+        #     if int(elapsed) % 5 == 0:
+        #         with self._lock:
+        #             p = self.current_pose.pose.position
+        #         self.get_logger().info(
+        #             'Stationkeeping ... %.1f s  pos=(%.3f, %.3f, %.3f)' %
+        #             (elapsed, p.x, p.y, p.z))
+        #     time.sleep(1.0)
 
-        self.get_logger().info('Test duration elapsed.')
-        with self._lock:
-            self.mission_active = False
+        # self.get_logger().info('Test duration elapsed.')
+        # with self._lock:
+        #     self.mission_active = False
 
     def handle_land(self):
         self.get_logger().info('LAND received – descending')
 
-        with self._lock:
-            land_pose = PoseStamped()
-            land_pose.header.frame_id = 'map'
-            land_pose.pose.position.x = self.current_pose.pose.position.x
-            land_pose.pose.position.y = self.current_pose.pose.position.y
-            land_pose.pose.position.z = self.current_pose.pose.position.z
-            land_pose.pose.orientation = self.current_pose.pose.orientation
+        # with self._lock:
+        #     land_pose = PoseStamped()
+        #     land_pose.header.frame_id = 'map'
+        #     land_pose.pose.position.x = self.current_pose.pose.position.x
+        #     land_pose.pose.position.y = self.current_pose.pose.position.y
+        #     land_pose.pose.position.z = self.current_pose.pose.position.z
+        #     land_pose.pose.orientation = self.current_pose.pose.orientation
 
-        step = LAND_DESCENT_RATE / OFFBOARD_RATE
+        # step = LAND_DESCENT_RATE / OFFBOARD_RATE
 
-        while True:
-            with self._lock:
-                current_z = self.current_pose.pose.position.z
-                land_pose.pose.position.z = max(
-                    land_pose.pose.position.z - step, 0.0)
-                self.hold_pose = land_pose
+        # while True:
+        #     with self._lock:
+        #         current_z = self.current_pose.pose.position.z
+        #         land_pose.pose.position.z = max(
+        #             land_pose.pose.position.z - step, 0.0)
+        #         self.hold_pose = land_pose
 
-            if current_z < LAND_ALTITUDE:
-                self.get_logger().info('Landed (z = %.3f m)' % current_z)
-                break
-            time.sleep(1.0 / OFFBOARD_RATE)
+        #     if current_z < LAND_ALTITUDE:
+        #         self.get_logger().info('Landed (z = %.3f m)' % current_z)
+        #         break
+        #     time.sleep(1.0 / OFFBOARD_RATE)
 
-        time.sleep(1.0)
-        self._set_arm(False)
-        with self._lock:
-            self.hold_pose = None
+        # time.sleep(1.0)
+        # self._set_arm(False)
+        # with self._lock:
+        #     self.hold_pose = None
 
     def handle_abort(self):
         self.get_logger().warn('ABORT – landing immediately!')
-        with self._lock:
-            self.mission_active = False
-        self.handle_land()
+        # with self._lock:
+        #     self.mission_active = False
+        # self.handle_land()
 
     # ── Pose / state callbacks ───────────────────────────
     def callback_pose(self, msg: PoseStamped):
