@@ -11,6 +11,7 @@ import numpy as np
 import threading
 
 GROUND = 'GROUND'
+WAIT = 'WAIT'
 CONNECT = 'CONNECT'
 TAKEOFF = 'TAKEOFF'
 HOVER = 'HOVER'
@@ -166,6 +167,8 @@ def main(args=None):
         # state machine
         if COMMAND == 'abort' and MODE != GROUND:
             MODE = ABORT
+        elif COMMAND == 'ground' and MODE == GROUND: 
+            MODE = WAIT
         elif COMMAND == 'launch' and MODE == GROUND:
             MODE = CONNECT
         elif COMMAND == 'test':
@@ -175,6 +178,9 @@ def main(args=None):
 
         # behaviour
         node.get_logger().info(f"Mode: {MODE}")
+        if MODE == WAIT:
+            pass
+            #cmd.pose = node.odom_pose.pose 
         if MODE == CONNECT:
             # check if armed and in offboard mode
             if node.state.armed and node.state.mode == "OFFBOARD":
