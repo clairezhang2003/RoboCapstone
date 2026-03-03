@@ -19,10 +19,10 @@ ABORT = 'ABORT'
 
 LOCAL_GOAL_TOLERANCE = 0.15 # [m]: height tolerance of "reached local goal"
 GOAL_TOLERANCE = 0.05
-TAKEOFF_INCREMENT = 0.2     # [m]: how much to increase takeoff goal
+TAKEOFF_INCREMENT = 0.5     # [m]: how much to increase takeoff goal
 LANDING_INCREMENT = 0.3
 
-GOAL_HEIGHT = 0.5
+GOAL_HEIGHT = 0.75
 
 COMMAND = 'ground'
 MODE = GROUND
@@ -76,11 +76,11 @@ def callback_abort(request, response):
 
 class CommNode(Node):
     def __init__(self):
-        super().__init__('rob498_drone_08')
-        self.srv_launch = self.create_service(Trigger, 'rob498_drone_08/comm/launch', callback_launch)
-        self.srv_test = self.create_service(Trigger, 'rob498_drone_08/comm/test', callback_test)
-        self.srv_land = self.create_service(Trigger, 'rob498_drone_08/comm/land', callback_land)
-        self.srv_abort = self.create_service(Trigger, 'rob498_drone_08/comm/abort', callback_abort)
+        super().__init__('rob498_drone_02')
+        self.srv_launch = self.create_service(Trigger, 'rob498_drone_02/comm/launch', callback_launch)
+        self.srv_test = self.create_service(Trigger, 'rob498_drone_02/comm/test', callback_test)
+        self.srv_land = self.create_service(Trigger, 'rob498_drone_02/comm/land', callback_land)
+        self.srv_abort = self.create_service(Trigger, 'rob498_drone_02/comm/abort', callback_abort)
 
         self.rate = self.create_rate(30)
 
@@ -213,8 +213,8 @@ def main(args=None):
                 cmd.pose.position.z = min(cmd.pose.position.z + TAKEOFF_INCREMENT, goal_pos.pose.position.z)
             
         elif MODE == HOVER:
-            # nothing?
-            pass 
+            pass
+            #cmd.pose = node.odom_pose.pose 
         elif MODE == LAND:
             # initiate auto land
             # offb_set_mode.custom_mode = "AUTO.LAND"
