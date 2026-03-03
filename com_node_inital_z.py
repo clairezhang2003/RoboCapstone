@@ -74,11 +74,11 @@ def callback_abort(request, response):
 
 class CommNode(Node):
     def __init__(self):
-        super().__init__('rob498_drone_02')
-        self.srv_launch = self.create_service(Trigger, 'rob498_drone_02/comm/launch', callback_launch)
-        self.srv_test = self.create_service(Trigger, 'rob498_drone_02/comm/test', callback_test)
-        self.srv_land = self.create_service(Trigger, 'rob498_drone_02/comm/land', callback_land)
-        self.srv_abort = self.create_service(Trigger, 'rob498_drone_02/comm/abort', callback_abort)
+        super().__init__('rob498_drone_2')
+        self.srv_launch = self.create_service(Trigger, 'rob498_drone_2/comm/launch', callback_launch)
+        self.srv_test = self.create_service(Trigger, 'rob498_drone_2/comm/test', callback_test)
+        self.srv_land = self.create_service(Trigger, 'rob498_drone_2/comm/land', callback_land)
+        self.srv_abort = self.create_service(Trigger, 'rob498_drone_2/comm/abort', callback_abort)
 
         self.rate = self.create_rate(30)
 
