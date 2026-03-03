@@ -217,6 +217,7 @@ def main(args=None):
             # keep x,y at current, z at current (near ground_z)
             cmd.pose.position.x = node.odom_pose.pose.position.x
             cmd.pose.position.y = node.odom_pose.pose.position.y
+            cmd.pose.orientation = node.odom_pose.orientation
             # z is whatever we initialized; you can also lock to ground_z here if desired
             # cmd.pose.position.z = node.ground_z
 
