@@ -280,6 +280,7 @@ def main(args=None):
             cmd.pose.position.x = node.odom_pose.pose.position.x
             cmd.pose.position.y = node.odom_pose.pose.position.y
             cmd.pose.position.z = node.ground_z
+            self.get_logger().info(f"Ground reference z set to {self.ground_z:.3f}")
 
         # publish setpoint
         cmd.header.stamp = node.get_clock().now().to_msg()
