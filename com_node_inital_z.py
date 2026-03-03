@@ -21,10 +21,10 @@ ABORT = 'ABORT'
 
 LOCAL_GOAL_TOLERANCE = 0.15  # [m]
 GOAL_TOLERANCE = 0.05
-TAKEOFF_INCREMENT = 0.5      # [m]
-LANDING_INCREMENT = 0.3
+TAKEOFF_INCREMENT = 0.25      # [m]
+LANDING_INCREMENT = 0.25
 
-GOAL_HEIGHT = 0.75           # [m] above ground reference
+GOAL_HEIGHT = 0.5           # [m] above ground reference
 
 COMMAND = 'ground'
 MODE = GROUND
@@ -239,7 +239,7 @@ def main(args=None):
             cmd.pose.position.x = node.odom_pose.pose.position.x
             cmd.pose.position.y = node.odom_pose.pose.position.y
             cmd.pose.position.z = goal_pos.pose.position.z
-
+            node.get_logger().info("Hovering")
         elif MODE == LAND:
             # first time entering LAND from hover, step down from current altitude
             if cmd.pose.position.z == goal_pos.pose.position.z:
