@@ -119,7 +119,7 @@ class CommNode(Node):
         # latch a ground reference once (assumed on ground at startup)
         if self.ground_z is None:
             self.ground_z = msg.pose.position.z
-            self.get_logger().info(f"Ground reference z set to {self.ground_z:.3f}")
+            #self.get_logger().info(f"Ground reference z set to {self.ground_z:.3f}")
         self.get_logger().debug(f"Received odom {msg}")
 
 
@@ -188,7 +188,7 @@ def main(args=None):
             MODE = LAND
             COMMAND = 'ground'
 
-        node.get_logger().info(f"Mode: {MODE}")
+        #node.get_logger().info(f"Mode: {MODE}")
 
         if MODE == WAIT:
             pass
@@ -222,9 +222,9 @@ def main(args=None):
 
         elif MODE == TAKEOFF:
             # distance to final goal
-            node.get_logger().info(
-                f"local goal distance z: {np.abs(cmd.pose.position.z - node.odom_pose.pose.position.z)}"
-            )
+            #node.get_logger().info(
+                #f"local goal distance z: {np.abs(cmd.pose.position.z - node.odom_pose.pose.position.z)}"
+            #)
             if np.abs(goal_pos.pose.position.z - node.odom_pose.pose.position.z) < GOAL_TOLERANCE:
                 cmd.pose.position.z = goal_pos.pose.position.z
                 MODE = HOVER
@@ -280,7 +280,6 @@ def main(args=None):
             cmd.pose.position.x = node.odom_pose.pose.position.x
             cmd.pose.position.y = node.odom_pose.pose.position.y
             cmd.pose.position.z = node.ground_z
-            self.get_logger().info(f"Ground reference z set to {self.ground_z:.3f}")
 
         # publish setpoint
         cmd.header.stamp = node.get_clock().now().to_msg()
