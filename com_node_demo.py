@@ -220,27 +220,22 @@ def main(args=None):
             cmd.pose.orientation = node.odom_pose.pose.orientation
             # z is whatever we initialized; you can also lock to ground_z here if desired
             # cmd.pose.position.z = node.ground_z
-
         elif MODE == TAKEOFF:
-            # distance to final goal
-            #node.get_logger().info(
-                #f"local goal distance z: {np.abs(cmd.pose.position.z - node.odom_pose.pose.position.z)}"
-            #)
             if np.abs(goal_pos.pose.position.z - node.odom_pose.pose.position.z) < GOAL_TOLERANCE:
                 cmd.pose.position.z = goal_pos.pose.position.z
+                goal_pos.pose.position.x = node.odom_pose.pose.position.x 
+                goal_pos.pose.position.y = node.odom_pose.pose.position.y # could fix position drift
+                node.get_logger().info("TAKEOFF complete, now HOVERING")
                 MODE = HOVER
             elif np.abs(cmd.pose.position.z - node.odom_pose.pose.position.z) < LOCAL_GOAL_TOLERANCE:
                 cmd.pose.position.z = min(
                     cmd.pose.position.z + TAKEOFF_INCREMENT,
                     goal_pos.pose.position.z
                 )
-
         elif MODE == HOVER:
-            # hold at goal_pos altitude, follow x,y from odom if you want
-            cmd.pose.position.x = node.odom_pose.pose.position.x
-            cmd.pose.position.y = node.odom_pose.pose.position.y
+            cmd.pose.position.x = goal_pos.pose.position.x
+            cmd.pose.position.y = goal_pos.pose.position.y
             cmd.pose.position.z = goal_pos.pose.position.z
-            node.get_logger().info("Hovering")
         elif MODE == LAND:
             # first time entering LAND from hover, step down from current altitude
             if cmd.pose.position.z == goal_pos.pose.position.z:
