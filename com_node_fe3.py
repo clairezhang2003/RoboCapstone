@@ -7,7 +7,7 @@ import copy
 from std_srvs.srv import Trigger
 from mavros_msgs.msg import State
 from mavros_msgs.srv import SetMode, CommandBool
-from geometry_msgs.msg import PoseStamped, Pose
+from geometry_msgs.msg import PoseStamped, PoseArray
 import numpy as np
 import threading
 
@@ -16,18 +16,27 @@ WAIT = 'WAIT'
 CONNECT = 'CONNECT'
 TAKEOFF = 'TAKEOFF'
 HOVER = 'HOVER'
+NAVIGATE = 'NAVIGATE'
 LAND = 'LAND'
 ABORT = 'ABORT'
 
 LOCAL_GOAL_TOLERANCE = 0.15  # [m]
 GOAL_TOLERANCE = 0.05
-TAKEOFF_INCREMENT = 0.2     # [m]
-LANDING_INCREMENT = 0.2
+TAKEOFF_INCREMENT = 0.15     # [m]
+LANDING_INCREMENT = 0.15
 
-GOAL_HEIGHT = 0.44           # [m] above ground reference
+GOAL_HEIGHT = 0.5           # [m] above ground reference
+WAYPOINT_RADIUS = 0.4
 
 COMMAND = 'ground'
 MODE = GROUND
+
+### NEW FOR FE3
+WAYPOINTS = None
+WAYPOINTS_RECEIVED = False
+current_waypoint = 0
+start_time = None
+land_initialized = False
 
 # Callback handlers
 def handle_launch():
@@ -71,6 +80,24 @@ def callback_abort(request, response):
     response.success = True
     return response
 
+### NEW FOR FE3
+def callback_waypoints(msg):
+    global WAYPOINTS_RECEIVED, WAYPOINTS
+    if WAYPOINTS_RECEIVED:
+        return
+    print('Waypoints Received')
+    WAYPOINTS_RECEIVED = True
+    WAYPOINTS = np.empty((0,3))
+    for pose in msg.poses:
+        pos = np.array([pose.position.x, pose.position.y, pose.position.z])
+        WAYPOINTS = np.vstack((WAYPOINTS, pos))
+
+# check euclidean distance to see if within radius of waypoint
+def reached_waypoint(position, waypoint, radius=WAYPOINT_RADIUS):
+    dx = position.x - waypoint[0]
+    dy = position.y - waypoint[1]
+    dz = position.z - waypoint[2]
+    return np.sqrt(dx**2 + dy**2 + dz**2) < radius
 
 class CommNode(Node):
     def __init__(self):
@@ -79,6 +106,13 @@ class CommNode(Node):
         self.srv_test = self.create_service(Trigger, 'rob498_drone_2/comm/test', callback_test)
         self.srv_land = self.create_service(Trigger, 'rob498_drone_2/comm/land', callback_land)
         self.srv_abort = self.create_service(Trigger, 'rob498_drone_2/comm/abort', callback_abort)
+        # subscriber receives the set of waypoints as a PoseArray object
+        self.sub_waypoints = self.create_subscription(
+            PoseArray,
+            'rob498_drone_2/comm/waypoints',
+            callback_waypoints,
+            10
+        )
 
         self.rate = self.create_rate(30)
 
@@ -124,10 +158,12 @@ class CommNode(Node):
 
 
 def main(args=None):
-    global COMMAND, MODE
+    global COMMAND, MODE, current_waypoint, start_time, land_initialized
 
     COMMAND = 'ground'
     MODE = GROUND
+    start_time = None
+    land_initialized = False
 
     rclpy.init(args=args)
     node = CommNode()
@@ -182,10 +218,20 @@ def main(args=None):
             MODE = CONNECT
             COMMAND = 'ground'
         elif COMMAND == 'test':
-            MODE = HOVER
+            ### NEW FOR FE3
+            # test only called from HOVER or NAVIGATE
+            if MODE == HOVER or MODE == NAVIGATE:
+                current_waypoint = 0
+                start_time = node.get_clock().now()
+                # ensure navigation
+                MODE = NAVIGATE
+                node.get_logger().info("TESTING NOW! NAVIGATION STARTING!")
+            else:
+                node.get_logger().warning(f"NOT READY FOR TEST. MODE={MODE}")
             COMMAND = 'ground'
         elif COMMAND == 'land' and MODE != GROUND:
             MODE = LAND
+            land_initialized = False
             COMMAND = 'ground'
 
         #node.get_logger().info(f"Mode: {MODE}")
@@ -220,31 +266,63 @@ def main(args=None):
             cmd.pose.orientation = node.odom_pose.pose.orientation
             # z is whatever we initialized; you can also lock to ground_z here if desired
             # cmd.pose.position.z = node.ground_z
-
         elif MODE == TAKEOFF:
-            # distance to final goal
-            #node.get_logger().info(
-                #f"local goal distance z: {np.abs(cmd.pose.position.z - node.odom_pose.pose.position.z)}"
-            #)
+            # when within tol of goal, set x/y/z
             if np.abs(goal_pos.pose.position.z - node.odom_pose.pose.position.z) < GOAL_TOLERANCE:
                 cmd.pose.position.z = goal_pos.pose.position.z
+                goal_pos.pose.position.x = node.odom_pose.pose.position.x 
+                goal_pos.pose.position.y = node.odom_pose.pose.position.y # could fix position drift
+                node.get_logger().info("TAKEOFF complete, now HOVERING - START TEST")
                 MODE = HOVER
+            # ascend to target    
             elif np.abs(cmd.pose.position.z - node.odom_pose.pose.position.z) < LOCAL_GOAL_TOLERANCE:
                 cmd.pose.position.z = min(
                     cmd.pose.position.z + TAKEOFF_INCREMENT,
                     goal_pos.pose.position.z
                 )
-
         elif MODE == HOVER:
-            # hold at goal_pos altitude, follow x,y from odom if you want
-            cmd.pose.position.x = node.odom_pose.pose.position.x
-            cmd.pose.position.y = node.odom_pose.pose.position.y
+            # stay in hover until test command
+            cmd.pose.position.x = goal_pos.pose.position.x
+            cmd.pose.position.y = goal_pos.pose.position.y
             cmd.pose.position.z = goal_pos.pose.position.z
-            node.get_logger().info("Hovering")
+        elif MODE == NAVIGATE:
+            if not WAYPOINTS_RECEIVED or WAYPOINTS is None:
+                # safety - in case test is called before we get waypoints, just hover
+                node.get_logger().warning("WAYPOINT NOT RECEIVED. HOVERING.", throttle_duration_sec=5.0, clock=node.get_clock())
+                cmd.pose.position.x = goal_pos.pose.position.x
+                cmd.pose.position.y = goal_pos.pose.position.y
+                cmd.pose.position.z = goal_pos.pose.position.z
+            # if all waypoints are visited, reset land flag and land    
+            elif current_waypoint >= len(WAYPOINTS):
+                node.get_logger().info("ALL WAYPOINTS VISITED. LANDING NOW!")
+                land_initialized = False
+                MODE = LAND
+            else:
+                # check time limits
+                elapsed = node.get_clock().now() - start_time
+                if elapsed > Duration(seconds=90.0):
+                    node.get_logger().warning("90s LIMIT REACHED. LANDING.")
+                    MODE = LAND
+                    land_initialized = False
+                elif elapsed > Duration(seconds=60.0):
+                    node.get_logger().warning("60s PENALTY STARTED", throttle_duration_sec=5.0, clock=node.get_clock())
+                # set target waypoints
+                wp = WAYPOINTS[current_waypoint]
+                cmd.pose.position.x = wp[0]
+                cmd.pose.position.y = wp[1]
+                cmd.pose.position.z = wp[2]
+                # if within radius of waypoint, log it as reached then go to the next one
+                if reached_waypoint(node.odom_pose.pose.position, wp):
+                    node.get_logger().info(f"WAYPOINT {current_waypoint + 1}/{len(WAYPOINTS)} REACHED!")
+                    current_waypoint += 1
+
         elif MODE == LAND:
-            # first time entering LAND from hover, step down from current altitude
-            if cmd.pose.position.z == goal_pos.pose.position.z:
+            if not land_initialized:
+                # used to be entering LAND from HOVER so used to just step down from current altitude
+                # NOW, since LAND can be called from any state, use land initialization check to
+                # step down from any altitude
                 cmd.pose.position.z = node.odom_pose.pose.position.z - LANDING_INCREMENT
+                land_initialized = True
 
             # update local landing goal downward in increments
             if np.abs(cmd.pose.position.z - node.odom_pose.pose.position.z) < LOCAL_GOAL_TOLERANCE:

@@ -24,7 +24,7 @@ GOAL_TOLERANCE = 0.05
 TAKEOFF_INCREMENT = 0.2     # [m]
 LANDING_INCREMENT = 0.2
 
-GOAL_HEIGHT = 0.44           # [m] above ground reference
+GOAL_HEIGHT = 0.33 #0.44           # [m] above ground reference
 
 COMMAND = 'ground'
 MODE = GROUND
