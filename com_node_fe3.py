@@ -39,8 +39,6 @@ start_time = None
 land_initialized = False
 
 NAV_SPEED = 0.3 # [m/s]
-WAYPOINT_PAUSE = 5.0 # [s]
-waypoint_pause_start = None
 
 # Callback handlers
 def handle_launch():
@@ -162,13 +160,12 @@ class CommNode(Node):
 
 
 def main(args=None):
-    global COMMAND, MODE, current_waypoint, start_time, land_initialized, waypoint_pause_start
+    global COMMAND, MODE, current_waypoint, start_time, land_initialized
 
     COMMAND = 'ground'
     MODE = GROUND
     start_time = None
     land_initialized = False
-    waypoint_pause_start = None
 
     rclpy.init(args=args)
     node = CommNode()
@@ -313,43 +310,29 @@ def main(args=None):
                     node.get_logger().warning("60s PENALTY STARTED", throttle_duration_sec=5.0, clock=node.get_clock())
                 # set target waypoints
                 wp = WAYPOINTS[current_waypoint]
-                # pause at waypoint, then move to the next
-                if waypoint_pause_start is not None:
-                    cmd.pose.position.x = wp[0]
-                    cmd.pose.position.y = wp[1]
-                    cmd.pose.position.z = wp[2]
-                    pause_elapsed = node.get_clock().now() - waypoint_pause_start
-                    if pause_elapsed > Duration(seconds=WAYPOINT_PAUSE):
-                        node.get_logger().info(f"PAUSE AT THIS WAYPOINT DONE. MOVING TO {current_waypoint + 1}/{len(WAYPOINTS)}")
-                        waypoint_pause_start = None
-                        current_waypoint += 1
-                else:
-                    # move towards waypoint at slower speed
-                    current_pos = np.array([
-                        node.odom_pose.pose.position.x,
-                        node.odom_pose.pose.position.y,
-                        node.odom_pose.pose.position.z
-                    ])
-                    target_pos = np.array([wp[0], wp[1], wp[2]])
-                    direction = target_pos - current_pos
-                    distance = np.linalg.norm(direction)
+                # move towards waypoint at slower speed
+                current_pos = np.array([
+                    cmd.pose.position.x,
+                    cmd.pose.position.y,
+                    cmd.pose.position.z
+                ])
+                target_pos = np.array([wp[0], wp[1], wp[2]])
+                direction = target_pos - current_pos
+                distance = np.linalg.norm(direction)
 
-                    if distance > 0.01:  # avoid divide by zero
-                        # max step size per iteration at 30Hz
-                        max_step = NAV_SPEED / 30.0
-                        step = min(distance, max_step)
-                        unit = direction / distance
-                        next_pos = current_pos + unit * step
-                        cmd.pose.position.x = next_pos[0]
-                        cmd.pose.position.y = next_pos[1]
-                        cmd.pose.position.z = next_pos[2]
-                    # if within radius of waypoint, log it as reached, start pause
-                    if reached_waypoint(node.odom_pose.pose.position, wp):
-                        node.get_logger().info(f"WAYPOINT {current_waypoint + 1}/{len(WAYPOINTS)} REACHED! PAUSING FOR {WAYPOINT_PAUSE}s")
-                        waypoint_pause_start = node.get_clock().now()
-                        cmd.pose.position.x = wp[0]
-                        cmd.pose.position.y = wp[1]
-                        cmd.pose.position.z = wp[2]
+                if distance > 0.01:  # avoid divide by zero
+                    # max step size per iteration at 30Hz
+                    max_step = NAV_SPEED / 30.0
+                    step = min(distance, max_step)
+                    unit = direction / distance
+                    next_pos = current_pos + unit * step
+                    cmd.pose.position.x = next_pos[0]
+                    cmd.pose.position.y = next_pos[1]
+                    cmd.pose.position.z = next_pos[2]
+                # if within radius of waypoint, log it as reached
+                if reached_waypoint(node.odom_pose.pose.position, wp):
+                    node.get_logger().info(f"WAYPOINT {current_waypoint + 1}/{len(WAYPOINTS)} REACHED!")
+                    current_waypoint += 1
 
         elif MODE == LAND:
             if not land_initialized:
