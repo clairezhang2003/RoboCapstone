@@ -204,8 +204,8 @@ def main(args=None):
 
         elif MODE == HOVER:
             # hold at goal_pos altitude, follow x,y from odom if you want
-            cmd.pose.position.x = goal_pos.odom_pose.pose.position.x
-            cmd.pose.position.y = goal_pos.odom_pose.pose.position.y
+            cmd.pose.position.x = goal_pos.pose.position.x
+            cmd.pose.position.y = goal_pos.pose.position.y
             cmd.pose.position.z = goal_pos.pose.position.z
             node.get_logger().info("Hovering")
         elif MODE == LAND:
