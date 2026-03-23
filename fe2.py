@@ -192,6 +192,9 @@ def main(args=None):
             #)
             if np.abs(goal_pos.pose.position.z - node.odom_pose.pose.position.z) < GOAL_TOLERANCE:
                 cmd.pose.position.z = goal_pos.pose.position.z
+                goal_pos.pose.position.x = node.odom_pose.pose.position.x
+                goal_pos.pose.position.y = node.odom_pose.pose.position.y
+                node.get_logger().info("TAKEOFF complete, now HOVERING")
                 MODE = HOVER
             elif np.abs(cmd.pose.position.z - node.odom_pose.pose.position.z) < LOCAL_GOAL_TOLERANCE:
                 cmd.pose.position.z = min(
@@ -201,8 +204,8 @@ def main(args=None):
 
         elif MODE == HOVER:
             # hold at goal_pos altitude, follow x,y from odom if you want
-            cmd.pose.position.x = node.odom_pose.pose.position.x
-            cmd.pose.position.y = node.odom_pose.pose.position.y
+            cmd.pose.position.x = goal_pos.odom_pose.pose.position.x
+            cmd.pose.position.y = goal_pos.odom_pose.pose.position.y
             cmd.pose.position.z = goal_pos.pose.position.z
             node.get_logger().info("Hovering")
         elif MODE == LAND:
