@@ -32,6 +32,7 @@ LANDING_INCREMENT = 0.15
 
 # SET THIS TO THE APRILTAG SIZE BEFORE RUNNING
 TAG_SIZE = 0.15              # [m] size of the AprilTag (physical side length)
+FLYING_HEIGHT = 0.78         # [m] hover altitude above ground
 
 # load camera calibration
 try:
@@ -50,9 +51,9 @@ FOLLOW_DISTANCE = 1.5        # [m] measure out before flying
 DISTANCE_ALPHA = 0.2
 
 K_FORWARD = 0.4
-K_YAW = 0.005
-MAX_VX = 0.6
-MAX_VYAW = 0.5
+K_YAW = 0
+MAX_VX = 0.2
+MAX_VYAW = 0
 MIN_HEIGHT = 0.3
 MAX_HEIGHT = 2.0
 DETECTION_TIMEOUT = 1.0
@@ -415,7 +416,7 @@ def main(args=None):
     goal_pos = PoseStamped()
     goal_pos.pose.position.x = node.odom_pose.pose.position.x
     goal_pos.pose.position.y = node.odom_pose.pose.position.y
-    goal_pos.pose.position.z = node.ground_z + TAG_SIZE
+    goal_pos.pose.position.z = node.ground_z + FLYING_HEIGHT
     goal_pos.pose.orientation = node.odom_pose.pose.orientation
 
     node.get_logger().info(
@@ -533,7 +534,7 @@ def main(args=None):
                 )
                 cmd.pose.position.x = node.odom_pose.pose.position.x
                 cmd.pose.position.y = node.odom_pose.pose.position.y
-                cmd.pose.position.z = node.ground_z + TAG_SIZE
+                cmd.pose.position.z = node.ground_z + FLYING_HEIGHT
                 cmd.header.stamp = node.get_clock().now().to_msg()
                 node.pose_pub.publish(cmd)
                 node.rate.sleep()
