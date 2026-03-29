@@ -13,6 +13,8 @@ import numpy as np
 import threading
 import cv2
 from cv2 import aruco
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 
 TEST_MODE = True
 
@@ -111,6 +113,8 @@ class CommNode(Node):
         self.srv_test = self.create_service(Trigger, 'rob498_drone_2/comm/test', callback_test)
         self.srv_land = self.create_service(Trigger, 'rob498_drone_2/comm/land', callback_land)
         self.srv_abort = self.create_service(Trigger, 'rob498_drone_2/comm/abort', callback_abort)
+        self.image_pub = self.create_publisher(Image, 'rob498_drone_2/camera/annotated_feed', 10)
+        self.bridge = CvBridge()
 
         self.rate = self.create_rate(30)
 
@@ -284,8 +288,17 @@ class CommNode(Node):
                 if self.latest_annotated_frame is None:
                     continue
                 display_frame = self.latest_annotated_frame.copy()
-            cv2.imshow("Drone Vision", display_frame)
-            cv2.waitKey(1)
+            try:
+                img_msg = self.bridge.cv2_to_imgmsg(display_frame, encoding="bgr8")
+                img_msg.header.stamp = self.get_clock().now().to_msg()
+                img_msg.header.frame_id = "camera_link"
+                self.image_pub.publish(img_msg)
+            except Exception as e:
+                self.get_logger().error(f"Failed to publish image: {e}")
+            
+            # small sleep to match camera rate
+            import time
+            time.sleep(0.033)
 
 
 def run_test_mode(node):
