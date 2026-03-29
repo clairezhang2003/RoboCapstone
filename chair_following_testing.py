@@ -46,7 +46,6 @@ except FileNotFoundError:
 
 IMAGE_WIDTH = 640
 IMAGE_HEIGHT = 480
-CHAIR_REAL_HEIGHT_M = 0.9    # [m] measure actual chair
 FOLLOW_DISTANCE = 1.5        # [m] measure out before flying
 DISTANCE_ALPHA = 0.2
 
@@ -308,7 +307,7 @@ def run_test_mode(node):
             continue
 
         # distance estimation
-        raw_distance = (CHAIR_REAL_HEIGHT_M * FOCAL_LENGTH_PX) / box_height_px
+        raw_distance = (GOAL_HEIGHT * FOCAL_LENGTH_PX) / box_height_px
 
         if node.filtered_distance is None:
             node.filtered_distance = raw_distance
@@ -540,7 +539,7 @@ def main(args=None):
                 node.rate.sleep()
                 continue
 
-            raw_distance = (CHAIR_REAL_HEIGHT_M * FOCAL_LENGTH_PX) / box_height_px
+            raw_distance = (GOAL_HEIGHT * FOCAL_LENGTH_PX) / box_height_px
 
             if node.filtered_distance is None:
                 node.filtered_distance = raw_distance
