@@ -192,7 +192,7 @@ class CommNode(Node):
                 with self.frame_lock:
                     self.latest_frame = frame
 
-    def run_yolo(self):
+    def detect_tag(self):
         with self.frame_lock:
             if self.latest_frame is None:
                 return
@@ -209,13 +209,17 @@ class CommNode(Node):
         max_area = 0
         if ids is not None:
             for i, tag_id in enumerate(ids):
-                corners = corners_list[i]
-                x1, y1 = corners[0][0].astype(int)
-                x2, y2 = corners[0][2].astype(int)
-                area = abs((x2 - x1) * (y2 - y1))
+                corners = corners_list[i][0]  # Get 4 corner points
+                x_coords = corners[:, 0].astype(int)
+                y_coords = corners[:, 1].astype(int)
+                x1 = int(np.min(x_coords))
+                y1 = int(np.min(y_coords))
+                x2 = int(np.max(x_coords))
+                y2 = int(np.max(y_coords))
+                area = (x2 - x1) * (y2 - y1)
                 if area > max_area:
                     max_area = area
-                    largest_tag = (x1, y1, x2, y2, i, int(tag_id[0]), corners)
+                    largest_tag = (x1, y1, x2, y2, i, int(tag_id[0]), corners_list[i][0])
 
         if largest_tag is not None:
             x1, y1, x2, y2, idx, tag_id, corners = largest_tag
@@ -228,7 +232,7 @@ class CommNode(Node):
             tag_width = abs(x2 - x1)
 
             # Draw tag corners and bounding box
-            corners_int = corners[0].astype(int)
+            corners_int = corners.astype(int)
             cv2.polylines(annotated, [corners_int], True, (0, 255, 0), 3)
             cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
             cv2.putText(annotated, f"Tag ID={tag_id}",
@@ -293,7 +297,7 @@ def run_test_mode(node):
     rate = node.create_rate(10)
 
     while rclpy.ok():
-        node.run_yolo()
+        node.detect_tag()
 
         detection_lost = (
             node.latest_detection is None or
@@ -501,13 +505,13 @@ def main(args=None):
                 )
 
         elif MODE == HOVER:
-            node.run_yolo()
+            node.detect_tag()
             cmd.pose.position.x = goal_pos.pose.position.x
             cmd.pose.position.y = goal_pos.pose.position.y
             cmd.pose.position.z = goal_pos.pose.position.z
 
         elif MODE == FOLLOW:
-            node.run_yolo()
+            node.detect_tag()
 
             detection_lost = (
                 node.latest_detection is None or
