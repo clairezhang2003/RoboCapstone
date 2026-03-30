@@ -42,7 +42,7 @@ class FallDetectionNode(Node):
     def process_frame(self):
         ret, frame = self.cap.read()
         if not ret:
-            break
+            return
     
         # Inference with lower image size for speed
         # verbose=False reduces console spam which can slow down Python loops
