@@ -29,7 +29,7 @@ class FallDetectionNode(Node):
 
         self.timer = self.create_timer(0.03, self.process_frame)
 
-    def gstreamer_pipeline(w=640, h=480, fps=30, flip=0):
+    def gstreamer_pipeline(self, w=640, h=480, fps=30, flip=0):
         return (
             "nvarguscamerasrc sensor-id=0 ! "
             "video/x-raw(memory:NVMM), width=1640, height=1232, framerate=%d/1 ! "
